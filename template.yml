@@ -1,0 +1,85 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Send a slack notification for untagged resources and stops/terminates them'
+Parameters:
+  AwsRegion:
+    Type: String
+    AllowedValues:
+      - us-east-1
+      - us-east-2
+      - us-west-1
+      - us-west-2
+  SlackChannel:
+    Type: String
+  SlackWebHook:
+    Type: String
+  DesiredTagKey:
+    Type: String
+  DesiredTagValue:
+    Type: String
+  Behavior:
+    Type: String
+    Default: notify
+    AllowedValues:
+      - notify
+      - stop
+      - terminate
+  ScheduleExpression:
+    Type: String
+    Default: "cron(0 16 ? * THU *)"
+Resources:
+  AWSCleanUntaggedResourcesRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName:
+        Fn::Sub: AWSCleanUntaggedResourcesRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+            - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+        Version: 2012-10-17
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSLambdaExecute
+        - arn:aws:iam::aws:policy/AmazonEC2FullAccess
+        - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+
+  AWSCleanUntaggedResourcesFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Send a slack notification for untagged resources and stops/terminates them
+      Handler: clean_untagged_resources.lambda_handler
+      Runtime: python2.7
+      Role: !GetAtt 'AWSCleanUntaggedResourcesRole.Arn'
+      Timeout: 240
+      Environment:
+        Variables:
+          SLACK_CHANNEL: !Ref SlackChannel
+          SLACK_WEBHOOK_URL: !Ref SlackWebHook
+          TAG_KEY: !Ref DesiredTagKey
+          TAG_VALUE: !Ref DesiredTagValue
+          BEHAVIOR: !Ref Behavior
+          REGION: !Ref AwsRegion
+      Code: aws-clean-untagged-resources
+  AWSCleanUntaggedResourcesRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: !Ref ScheduleExpression
+      Targets:
+      - Id: AWSCleanUntaggedResourcesScheduler
+        Arn: !GetAtt AWSCleanUntaggedResourcesFunction.Arn
+  InvokeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - AWSCleanUntaggedResourcesFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn:
+        Fn::GetAtt:
+        - AWSCleanUntaggedResourcesFunction
+        - Arn
