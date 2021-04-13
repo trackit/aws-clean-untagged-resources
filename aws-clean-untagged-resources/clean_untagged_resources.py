@@ -22,7 +22,7 @@ def intro_text(region):
         "type": "section",
         "text": {
             "type": "mrkdwn",
-            text: ":globe_with_meridians: *" + region + "*"
+            "text": ":globe_with_meridians: *" + region + "*"
         }
     })
     text['blocks'].append({
@@ -180,8 +180,9 @@ def rds_instances_loop(rds, region):
     return untagged_rds
 
 
-def lambda_handler():
+def lambda_handler(event, context):
     regions = REGIONS.split(',')
+    print(regions)
     for region in regions:
         print(region)
         intro_text(region)
@@ -196,7 +197,3 @@ def lambda_handler():
         print(untagged_ec2)
         print(untagged_rds)
         behavior(ec2_client, rds, untagged_ec2, untagged_rds)
-
-
-if __name__ == "__main__":
-    lambda_handler()

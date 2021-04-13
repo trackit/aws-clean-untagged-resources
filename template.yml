@@ -28,6 +28,8 @@ Parameters:
   ScheduleExpression:
     Type: String
     Default: "cron(0 16 ? * THU *)"
+  Message:
+    Type: String
 Resources:
   AWSCleanUntaggedResourcesRole:
     Type: AWS::IAM::Role
@@ -64,6 +66,7 @@ Resources:
           TAG_VALUE: !Ref DesiredTagValue
           BEHAVIOR: !Ref Behavior
           REGIONS: !Ref ScriptRegions
+          MESSAGE: !Ref Message
       Code: aws-clean-untagged-resources
   AWSCleanUntaggedResourcesRule:
     Type: AWS::Events::Rule
