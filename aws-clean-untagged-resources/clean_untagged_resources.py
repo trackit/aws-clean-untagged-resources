@@ -2,12 +2,12 @@ import boto3
 import json
 import logging
 import os
-from urllib2 import Request, urlopen, URLError, HTTPError
+import urllib.request
 
 ec2 = boto3.resource('ec2')
 rds = boto3.client('rds')
 ec2_client = boto3.client('ec2')
-text = {"blocks" : [] }
+text = {"blocks": []}
 
 SLACK_WEBHOOK_URL = os.environ['SLACK_WEBHOOK_URL']
 SLACK_CHANNEL = os.environ['SLACK_CHANNEL']
@@ -17,23 +17,26 @@ BEHAVIOR = os.environ['BEHAVIOR']
 MESSAGE = os.environ['MESSAGE']
 REGION = os.environ['REGION']
 
+
 def intro_text():
 	text['blocks'].append({
-    	"type": "section",
-    	"text": {
-    		"type": "mrkdwn",
-    		"text": MESSAGE
-    	}
-    })
+		"type": "section",
+		"text": {
+			"type": "mrkdwn",
+			"text": MESSAGE
+		}
+	})
+
 
 def outro_text():
-    text['blocks'].append({
-	    "text": {
-		    "text": ":robot_face: *Tag your resources with `" + TAG_KEY + "=" + TAG_VALUE + "` if you want them to live!*",
-		    "type": "mrkdwn"
-	    },
-	    "type": "section"
-    })
+	text['blocks'].append({
+		"text": {
+			"text": ":robot_face: *Tag your resources with `" + TAG_KEY + "=" + TAG_VALUE + "` if you want them to live!*",
+			"type": "mrkdwn"
+		},
+		"type": "section"
+	})
+
 
 def no_resources_text():
 	text['blocks'].append({
@@ -42,27 +45,29 @@ def no_resources_text():
 			"type": "mrkdwn"
 		},
 		"type": "section"
-	}) 
+	})
+
 
 def section_header_text(name):
-    text['blocks'].append({
-	    "type": "header",
+	text['blocks'].append({
+		"type": "header",
 		"text": {
 			"type": "plain_text",
 			"text": name
 		}
-    })
-    text['blocks'].append({
-    	"type": "divider"
-    })
+	})
+	text['blocks'].append({
+		"type": "divider"
+	})
+
 
 def generate_text_element_ec2(instance, instance_name):
-    result = "*" + str(instance.id) + " (" + instance_name + ")*\n"
-    result += ":birthday: *Launch date* " + str(instance.launch_time) + "\n:key: *Keypair Name* " + instance.key_name + "\n"
-    for tag in instance.tags:
-        result += ":label: `" + tag['Key'] + "` = `" + tag['Value'] + "`\n"
-    url = "https://" + REGION + ".console.aws.amazon.com/ec2/v2/home?region=us-west-2#InstanceDetails:instanceId=" + str(instance.id)
-    text['blocks'].append({
+	result = "*" + str(instance.id) + " (" + instance_name + ")*\n"
+	result += ":birthday: *Launch date* " + str(instance.launch_time) + "\n:key: *Keypair Name* " + instance.key_name + "\n"
+	for tag in instance.tags:
+		result += ":label: `" + tag['Key'] + "` = `" + tag['Value'] + "`\n"
+	url = "https://" + REGION + ".console.aws.amazon.com/ec2/v2/home?region=us-west-2#InstanceDetails:instanceId=" + str(instance.id)
+	text['blocks'].append({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
@@ -79,17 +84,18 @@ def generate_text_element_ec2(instance, instance_name):
 				"action_id": "button-action"
 			}
 	})
-    text['blocks'].append({
+	text['blocks'].append({
 			"type": "divider"
 	})
-	
+
+
 def generate_text_element_rds(instance):
-    result = "*" + instance['DBInstanceIdentifier'] + " (" + instance['DbiResourceId'] + ")*\n"
-    result += ":birthday: *Launch date* " + str(instance['InstanceCreateTime']) + "\n:wrench: *Engine* " + instance['Engine'] + "\n"
-    for tag in instance['TagList']:
-        result += ":label: `" + tag['Key'] + "` = `" + tag['Value'] + "`\n"
-    url = "https://" + REGION + ".console.aws.amazon.com/rds/home?region=us-west-2#databases:"
-    text['blocks'].append({
+	result = "*" + instance['DBInstanceIdentifier'] + " (" + instance['DbiResourceId'] + ")*\n"
+	result += ":birthday: *Launch date* " + str(instance['InstanceCreateTime']) + "\n:wrench: *Engine* " + instance['Engine'] + "\n"
+	for tag in instance['TagList']:
+		result += ":label: `" + tag['Key'] + "` = `" + tag['Value'] + "`\n"
+	url = "https://" + REGION + ".console.aws.amazon.com/rds/home?region=us-west-2#databases:"
+	text['blocks'].append({
 			"type": "section",
 			"text": {
 				"type": "mrkdwn",
@@ -106,21 +112,22 @@ def generate_text_element_rds(instance):
 				"action_id": "button-action"
 			}
 	})
-    text['blocks'].append({
+	text['blocks'].append({
 			"type": "divider"
 	})
 
 
 def behavior(untagged_ec2, untagged_rds):
 	if BEHAVIOR == 'notify':
-	    req = Request(SLACK_WEBHOOK_URL, json.dumps(text))
-    	urlopen(req)
+		req = urllib.request.Request(SLACK_WEBHOOK_URL, json.dumps(text).encode())
+		urllib.request.urlopen(req)
 	if BEHAVIOR == 'stop':
 		ec2_client.stop_instances(InstanceIds=untagged_ec2)
 		for instance in untagged_rds:
 			rds.stop_db_instances(DBInstanceIdentifier=instance,DBSnapshotIdentifier=instance)
 	if BEHAVIOR == 'terminate':
 		print("nothing")
+
 
 def lambda_handler(event, context):
 	intro_text()
@@ -132,14 +139,14 @@ def lambda_handler(event, context):
 
 	for instance in ec2.instances.all():
 		instance_name = ""
-        has_tag = False
-        for tag in instance.tags:
-            if tag['Key'] == 'Name':
-                instance_name = tag['Value']
-            if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
-                has_tag = True
-                break
-        if not has_tag:
+		has_tag = False
+		for tag in instance.tags:
+			if tag['Key'] == 'Name':
+				instance_name = tag['Value']
+			if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+				has_tag = True
+				break
+		if not has_tag:
 			generate_text_element_ec2(instance, instance_name)
 			untagged_ec2.append(instance.id)
 			n += 1
@@ -154,16 +161,16 @@ def lambda_handler(event, context):
 	for instance in instances['DBInstances']:
 		has_tag = False
 		for tag in instance['TagList']:
-		    if tag['Key'] == 'Name':
-		        instance_name = tag['Value']
-		    if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
-		        has_tag = True
-		        break
+			if tag['Key'] == 'Name':
+				instance_name = tag['Value']
+			if tag['Key'] == TAG_KEY and tag['Value'] == TAG_VALUE:
+				has_tag = True
+				break
 
 		if not has_tag:
 			generate_text_element_rds(instance)
 			untagged_rds.append(instance['DBInstanceIdentifier'])
-			n += 1    
+			n += 1
 	if n == 0:
 		no_resources_text()
 	outro_text()
