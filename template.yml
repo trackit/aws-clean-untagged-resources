@@ -51,7 +51,7 @@ Resources:
     Properties:
       Description: Send a slack notification for untagged resources and stops/terminates them
       Handler: clean_untagged_resources.lambda_handler
-      Runtime: python2.7
+      Runtime: python3.9
       Role: !GetAtt 'AWSCleanUntaggedResourcesRole.Arn'
       Timeout: 240
       Environment:
