@@ -8,6 +8,8 @@ Parameters:
       - us-east-2
       - us-west-1
       - us-west-2
+  ScriptRegions:
+    Type: String
   SlackChannel:
     Type: String
   SlackWebHook:
@@ -31,7 +33,10 @@ Resources:
     Type: AWS::IAM::Role
     Properties:
       RoleName:
-        Fn::Sub: AWSCleanUntaggedResourcesRole
+        Fn::Join:
+          - '-'
+          - - AWSCleanUntaggedResourcesRole
+            - Ref: AWS::StackName
       AssumeRolePolicyDocument:
         Statement:
           - Action:
@@ -62,6 +67,7 @@ Resources:
           TAG_VALUE: !Ref DesiredTagValue
           BEHAVIOR: !Ref Behavior
           REGION: !Ref AwsRegion
+          REGIONS: !Ref ScriptRegions
       Code: aws-clean-untagged-resources
   AWSCleanUntaggedResourcesRule:
     Type: AWS::Events::Rule
