@@ -4,9 +4,6 @@ import logging
 import os
 import urllib.request
 
-# ec2 = boto3.resource('ec2')
-# rds = boto3.client('rds')
-# ec2_client = boto3.client('ec2')
 text = {"blocks": []}
 
 SLACK_WEBHOOK_URL = os.environ['SLACK_WEBHOOK_URL']
