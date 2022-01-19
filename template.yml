@@ -18,6 +18,11 @@ Parameters:
     Type: String
   DesiredTagValue:
     Type: String
+  DesiredLifetimeTagKey:
+    Type: String
+  DesiredMessage:
+    Type: String
+    Default: TestMessage
   Behavior:
     Type: String
     Default: notify
@@ -68,6 +73,8 @@ Resources:
           BEHAVIOR: !Ref Behavior
           REGION: !Ref AwsRegion
           REGIONS: !Ref ScriptRegions
+          LIFETIME_TAG_KEY: !Ref DesiredLifetimeTagKey
+          MESSAGE: !Ref DesiredMessage
       Code: aws-clean-untagged-resources
   AWSCleanUntaggedResourcesRule:
     Type: AWS::Events::Rule
