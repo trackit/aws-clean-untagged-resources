@@ -1,16 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Send a slack notification for untagged resources and stops/terminates them'
 Parameters:
-  AwsRegion:
-    Type: String
-    AllowedValues:
-      - us-east-1
-      - us-east-2
-      - us-west-1
-      - us-west-2
   ScriptRegions:
-    Type: String
-  SlackChannel:
     Type: String
   SlackWebHook:
     Type: String
@@ -66,16 +57,14 @@ Resources:
       Timeout: 240
       Environment:
         Variables:
-          SLACK_CHANNEL: !Ref SlackChannel
           SLACK_WEBHOOK_URL: !Ref SlackWebHook
           TAG_KEY: !Ref DesiredTagKey
           TAG_VALUE: !Ref DesiredTagValue
           BEHAVIOR: !Ref Behavior
-          REGION: !Ref AwsRegion
           REGIONS: !Ref ScriptRegions
           LIFETIME_TAG_KEY: !Ref DesiredLifetimeTagKey
           MESSAGE: !Ref DesiredMessage
-      Code: aws-clean-untagged-resources
+      Code: aws-clean-untagged-resources.zip
   AWSCleanUntaggedResourcesRule:
     Type: AWS::Events::Rule
     Properties:
