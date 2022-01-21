@@ -2,3 +2,4 @@
 output.yaml
 .DS_Store
 *.zip
+aws-clean-untagged-resources/package
