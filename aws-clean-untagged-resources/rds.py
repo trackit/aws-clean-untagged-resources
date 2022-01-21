@@ -31,6 +31,9 @@ class RDSService:
             result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
             if tag["Key"] == self.lifetime_tag_key:
                 expired_date = instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))
+                if (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
+                        pytz.utc.localize(datetime.now()):
+                    expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
         result += f':skull_and_crossbones: *Expiration date* {str(expired_date)}\n'
         url = f'https://{region}.console.aws.amazon.com/rds/home?region={region}#databases:'
         self.slack_service.append_blocks({

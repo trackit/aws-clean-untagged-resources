@@ -30,6 +30,8 @@ class EC2Service:
             result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
             if tag["Key"] == self.lifetime_tag_key:
                 expired_date = instance.launch_time + timedelta(int(tag["Value"]))
+                if (instance.launch_time + timedelta(int(tag["Value"]))) < pytz.utc.localize(datetime.now()):
+                    expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
         result += f':skull_and_crossbones: *Expiration date* {str(expired_date)}\n'
         url = f'https://{region}.console.aws.amazon.com/ec2/v2/home?region={region}#InstanceDetails:instanceId=' \
               f'{str(instance.id)}'

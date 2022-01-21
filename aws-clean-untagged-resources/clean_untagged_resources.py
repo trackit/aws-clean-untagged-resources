@@ -9,7 +9,6 @@ TAG_KEY = os.environ["TAG_KEY"]
 TAG_VALUE = os.environ["TAG_VALUE"]
 BEHAVIOR = os.environ["BEHAVIOR"]
 MESSAGE = os.environ["MESSAGE"]
-REGION = os.environ["REGION"]
 REGIONS = os.environ["REGIONS"]
 LIFETIME_TAG_KEY = os.environ["LIFETIME_TAG_KEY"]
 
