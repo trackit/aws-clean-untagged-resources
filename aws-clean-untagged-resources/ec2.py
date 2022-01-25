@@ -1,3 +1,5 @@
+import logging
+
 import boto3
 import slack
 from datetime import timedelta, datetime
@@ -26,12 +28,13 @@ class EC2Service:
         result = f'*{str(instance.id)} ({instance_name})*\n'
         result += f':birthday: *Launch date* {str(instance.launch_time)}\n:key: *Keypair Name* {instance.key_name}\n'
         expired_date = 'No Tag Provided'
-        for tag in instance.tags:
-            result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
-            if tag["Key"] == self.lifetime_tag_key:
-                expired_date = instance.launch_time + timedelta(int(tag["Value"]))
-                if (instance.launch_time + timedelta(int(tag["Value"]))) < pytz.utc.localize(datetime.now()):
-                    expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
+        if instance.tags:
+            for tag in instance.tags:
+                result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
+                if tag["Key"] == self.lifetime_tag_key:
+                    expired_date = instance.launch_time + timedelta(int(tag["Value"]))
+                    if (instance.launch_time + timedelta(int(tag["Value"]))) < pytz.utc.localize(datetime.now()):
+                        expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
         result += f':skull_and_crossbones: *Expiration date* {str(expired_date)}\n'
         url = f'https://{region}.console.aws.amazon.com/ec2/v2/home?region={region}#InstanceDetails:instanceId=' \
               f'{str(instance.id)}'
@@ -65,16 +68,17 @@ class EC2Service:
             instance_name = ''
             has_tag = False
             has_lifetime_tag = False
-            for tag in instance.tags:
-                if tag["Key"] == 'Name':
-                    instance_name = tag["Value"]
-                if tag["Key"] == self.tag_key and tag["Value"] == self.tag_value:
-                    has_tag = True
-                    break
-                if tag["Key"] == self.lifetime_tag_key and \
-                        (instance.launch_time + timedelta(int(tag["Value"]))) > pytz.utc.localize(datetime.now()):
-                    has_lifetime_tag = True
-                    break
+            if instance.tags:
+                for tag in instance.tags:
+                    if tag["Key"] == 'Name':
+                        instance_name = tag["Value"]
+                    if tag["Key"] == self.tag_key and tag["Value"] == self.tag_value:
+                        has_tag = True
+                        break
+                    if tag["Key"] == self.lifetime_tag_key and \
+                            (instance.launch_time + timedelta(int(tag["Value"]))) > pytz.utc.localize(datetime.now()):
+                        has_lifetime_tag = True
+                        break
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance.id)
@@ -94,4 +98,12 @@ class EC2Service:
         return self.lifetime_tagged_resources
 
     def stop_untagged_resources(self):
-        self.boto3_client.stop_instances(InstanceIds=self.untagged_resources)
+        if len(self.untagged_resources) > 0:
+            self.boto3_client.stop_instances(InstanceIds=self.untagged_resources)
+
+    def terminate_untagged_resources(self):
+        if len(self.untagged_resources) > 0:
+            try:
+                self.boto3_client.terminate_instances(InstanceIds=self.untagged_resources)
+            except Exception as e:
+                logging.error('error while terminating EC2 instances: %s', e)

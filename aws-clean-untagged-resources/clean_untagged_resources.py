@@ -46,14 +46,15 @@ class AWSTerminator:
             self.ec2_service.stop_untagged_resources()
             self.rds_service.stop_untagged_resources()
         elif self.behavior_type == 'terminate':
-            logging.info('%s behavior not implemented.', self.behavior_type)
+            self.ec2_service.terminate_untagged_resources()
+            self.rds_service.terminate_untagged_resources()
         else:
             logging.info('%s behavior does not exist.', self.behavior_type)
 
 
 def lambda_handler(event, context):
     regions = REGIONS.split(',')
-    logging.basicConfig(format='%(asctime)s %(message)s', datefmt='[%I:%M:%S %p]', level=logging.INFO)
+    logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
     terminator = AWSTerminator(SLACK_WEBHOOK_URL, regions, MESSAGE, TAG_KEY, TAG_VALUE, LIFETIME_TAG_KEY, BEHAVIOR)
     terminator.process()

@@ -1,4 +1,5 @@
 import datetime
+import logging
 import boto3
 import slack
 from datetime import timedelta, datetime
@@ -27,13 +28,14 @@ class RDSService:
         result += f':birthday: *Launch date* {str(instance["InstanceCreateTime"])}\n' \
                   f':wrench: *Engine* {instance["Engine"]}\n'
         expired_date = 'No Tag Provided'
-        for tag in instance["TagList"]:
-            result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
-            if tag["Key"] == self.lifetime_tag_key:
-                expired_date = instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))
-                if (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
-                        pytz.utc.localize(datetime.now()):
-                    expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
+        if instance["TagList"]:
+            for tag in instance["TagList"]:
+                result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
+                if tag["Key"] == self.lifetime_tag_key:
+                    expired_date = instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))
+                    if (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
+                            pytz.utc.localize(datetime.now()):
+                        expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
         result += f':skull_and_crossbones: *Expiration date* {str(expired_date)}\n'
         url = f'https://{region}.console.aws.amazon.com/rds/home?region={region}#databases:'
         self.slack_service.append_blocks({
@@ -66,24 +68,25 @@ class RDSService:
         for instance in instances["DBInstances"]:
             has_tag = False
             has_lifetime_tag = False
-            for tag in instance["TagList"]:
-                # The following commented code isn't used for now
-                # if tag["Key"] == 'Name':
-                #     instance_name = tag["Value"]
-                if tag["Key"] == self.tag_key and tag["Value"] == self.tag_value:
-                    has_tag = True
-                    break
-                if tag["Key"] == self.lifetime_tag_key and \
-                        (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
-                        pytz.utc.localize(datetime.now()):
-                    has_lifetime_tag = True
-                    break
+            if instance["TagList"]:
+                for tag in instance["TagList"]:
+                    # The following commented code isn't used for now
+                    # if tag["Key"] == 'Name':
+                    #     instance_name = tag["Value"]
+                    if tag["Key"] == self.tag_key and tag["Value"] == self.tag_value:
+                        has_tag = True
+                        break
+                    if tag["Key"] == self.lifetime_tag_key and \
+                            (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
+                            pytz.utc.localize(datetime.now()):
+                        has_lifetime_tag = True
+                        break
 
             if not has_tag:
                 if has_lifetime_tag:
-                    self.lifetime_tagged_resources.append(instance["DBInstanceIdentifier"])
+                    self.lifetime_tagged_resources.append(instance)
                 else:
-                    self.untagged_resources.append(instance["DBInstanceIdentifier"])
+                    self.untagged_resources.append(instance)
                 self.generate_text_element_rds(instance, region)
                 n += 1
 
@@ -99,4 +102,25 @@ class RDSService:
 
     def stop_untagged_resources(self):
         for instance in self.untagged_resources:
-            self.boto3_client.strop_db_instances(DBInstanceIdentifier=instance, DBSnapshotIdentifier=instance)
+            self.boto3_client.stop_db_instance(
+                DBInstanceIdentifier=instance["DBInstanceIdentifier"],
+                DBSnapshotIdentifier=instance["DBInstanceIdentifier"]
+            )
+
+    def terminate_untagged_resources(self):
+        for instance in self.untagged_resources:
+            try:
+                self.boto3_client.delete_db_instance(
+                    DBInstanceIdentifier=instance["DBInstanceIdentifier"],
+                    SkipFinalSnapshot=True
+                )
+            except Exception as e:
+                logging.error('error while deleting db instance: %s', e)
+        for instance in self.untagged_resources:
+            try:
+                self.boto3_client.delete_db_cluster(
+                    DBClusterIdentifier=instance["DBClusterIdentifier"],
+                    SkipFinalSnapshot=True
+                )
+            except Exception as e:
+                logging.error('error while deleting db cluster: %s', e)
