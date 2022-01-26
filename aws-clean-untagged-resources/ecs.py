@@ -105,6 +105,7 @@ class ECSService:
                         task_name = tag["value"]
                     if tag["key"] == self.tag_key and tag["value"] == self.tag_value:
                         has_tag = True
+                        break
                     if tag["key"] == self.lifetime_tag_key and \
                             (task["createdAt"] + timedelta(int(tag["value"])) > pytz.utc.localize(datetime.now())):
                         has_lifetime_tag = True
