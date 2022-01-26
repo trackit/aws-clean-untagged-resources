@@ -1,5 +1,3 @@
-import logging
-
 import boto3
 import slack
 from datetime import timedelta, datetime
@@ -7,7 +5,7 @@ import pytz
 
 
 class EC2Service:
-    def __init__(self, tag_key, tag_value, lifetime_tag_key):
+    def __init__(self, tag_key, tag_value, lifetime_tag_key, behavior, logger):
         self.slack_service: slack.Slack = slack.Slack.get_instance()
         self.tag_key = tag_key
         self.tag_value = tag_value
@@ -16,6 +14,8 @@ class EC2Service:
         self.boto3_resource = None
         self.untagged_resources = []
         self.lifetime_tagged_resources = []
+        self.behavior = behavior
+        self.logger = logger
 
     def set_boto3(self, region):
         self.boto3_client = boto3.client(service_name='ec2', region_name=region)
@@ -24,7 +24,7 @@ class EC2Service:
     def get_boto3_client(self):
         return self.boto3_client
 
-    def generate_text_element_ec2(self, instance, instance_name, region):
+    def generate_text_notify(self, instance, instance_name, region):
         result = f'*{str(instance.id)} ({instance_name})*\n'
         result += f':birthday: *Launch date* {str(instance.launch_time)}\n:key: *Keypair Name* {instance.key_name}\n'
         expired_date = 'No Tag Provided'
@@ -55,6 +55,34 @@ class EC2Service:
                 'action_id': 'button-action'
             }
         })
+
+    def generate_text_stop(self, instance, instance_name):
+        self.slack_service.append_blocks({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f':warning: *{str(instance.id)} ({instance_name})* has been stopped.'
+            }
+        })
+
+    def generate_text_terminate(self, instance, instance_name):
+        self.slack_service.append_blocks({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f':rotating_light: *{str(instance.id)} ({instance_name})* has been terminated.'
+            }
+        })
+
+    def generate_text_element_ec2(self, instance, instance_name, region):
+        if self.behavior == 'notify':
+            self.generate_text_notify(instance, instance_name, region)
+        elif self.behavior == 'stop':
+            self.generate_text_stop(instance, instance_name)
+        elif self.behavior == 'terminate':
+            self.generate_text_terminate(instance, instance_name)
+        else:
+            return
         self.slack_service.append_blocks({
             'type': 'divider'
         })
@@ -65,7 +93,7 @@ class EC2Service:
         self.slack_service.section_header_text('EC2')
 
         for instance in self.boto3_resource.instances.all():
-            instance_name = ''
+            instance_name = 'Unknown'
             has_tag = False
             has_lifetime_tag = False
             if instance.tags:
@@ -106,4 +134,4 @@ class EC2Service:
             try:
                 self.boto3_client.terminate_instances(InstanceIds=self.untagged_resources)
             except Exception as e:
-                logging.error('error while terminating EC2 instances: %s', e)
+                self.logger.error('error while terminating EC2 instances: %s', e)

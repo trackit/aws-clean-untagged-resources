@@ -54,7 +54,7 @@ Resources:
       Handler: clean_untagged_resources.lambda_handler
       Runtime: python3.9
       Role: !GetAtt 'AWSCleanUntaggedResourcesRole.Arn'
-      Timeout: 240
+      Timeout: 900
       Environment:
         Variables:
           SLACK_WEBHOOK_URL: !Ref SlackWebHook

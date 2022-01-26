@@ -1,5 +1,4 @@
 import datetime
-import logging
 import boto3
 import slack
 from datetime import timedelta, datetime
@@ -7,7 +6,7 @@ import pytz
 
 
 class RDSService:
-    def __init__(self, tag_key, tag_value, lifetime_tag_key):
+    def __init__(self, tag_key, tag_value, lifetime_tag_key, behavior, logger):
         self.slack_service: slack.Slack = slack.Slack.get_instance()
         self.tag_key = tag_key
         self.tag_value = tag_value
@@ -16,6 +15,8 @@ class RDSService:
         self.boto3_resource = None
         self.untagged_resources = []
         self.lifetime_tagged_resources = []
+        self.behavior = behavior
+        self.logger = logger
 
     def set_boto3(self, region):
         self.boto3_client = boto3.client(service_name='rds', region_name=region)
@@ -23,7 +24,7 @@ class RDSService:
     def get_boto3_client(self):
         return self.boto3_client
 
-    def generate_text_element_rds(self, instance, region):
+    def generate_text_notify(self, instance, region):
         result = f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*\n'
         result += f':birthday: *Launch date* {str(instance["InstanceCreateTime"])}\n' \
                   f':wrench: *Engine* {instance["Engine"]}\n'
@@ -55,6 +56,35 @@ class RDSService:
                 'action_id': 'button-action'
             }
         })
+
+    def generate_text_stop(self, instance):
+        self.slack_service.append_blocks({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})* has been stopped.'
+            }
+        })
+
+    def generate_text_terminate(self, instance):
+        self.slack_service.append_blocks({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*'
+                        f'has been terminated as long as its cluster.'
+            }
+        })
+
+    def generate_text_element_rds(self, instance, region):
+        if self.behavior == 'notify':
+            self.generate_text_notify(instance, region)
+        elif self.behavior == 'stop':
+            self.generate_text_stop(instance)
+        elif self.behavior == 'terminate':
+            self.generate_text_terminate(instance)
+        else:
+            return
         self.slack_service.append_blocks({
             'type': 'divider'
         })
@@ -115,7 +145,7 @@ class RDSService:
                     SkipFinalSnapshot=True
                 )
             except Exception as e:
-                logging.error('error while deleting db instance: %s', e)
+                self.logger.error('error while deleting db instance: %s', e)
         for instance in self.untagged_resources:
             try:
                 self.boto3_client.delete_db_cluster(
@@ -123,4 +153,4 @@ class RDSService:
                     SkipFinalSnapshot=True
                 )
             except Exception as e:
-                logging.error('error while deleting db cluster: %s', e)
+                self.logger.error('error while deleting db cluster: %s', e)

@@ -1,3 +1,4 @@
+import logging
 import urllib.request
 import json
 
@@ -80,5 +81,8 @@ class Slack:
         self.text["blocks"] = []
 
     def request(self):
-        req = urllib.request.Request(self.webhook_url, json.dumps(self.text).encode())
-        urllib.request.urlopen(req)
+        if self.webhook_url:
+            req = urllib.request.Request(self.webhook_url, json.dumps(self.text).encode())
+            urllib.request.urlopen(req)
+        else:
+            logging.info('Slack Webhook URL not found.')
