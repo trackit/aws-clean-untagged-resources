@@ -110,14 +110,15 @@ class RDSService:
                             (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
                             pytz.utc.localize(datetime.now()):
                         has_lifetime_tag = True
-                        break
 
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance)
+                    if self.behavior == 'notify':
+                        self.generate_text_element_rds(instance, region)
                 else:
                     self.untagged_resources.append(instance)
-                self.generate_text_element_rds(instance, region)
+                    self.generate_text_element_rds(instance, region)
                 n += 1
 
         if n == 0:

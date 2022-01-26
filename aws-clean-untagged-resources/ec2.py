@@ -106,13 +106,14 @@ class EC2Service:
                     if tag["Key"] == self.lifetime_tag_key and \
                             (instance.launch_time + timedelta(int(tag["Value"]))) > pytz.utc.localize(datetime.now()):
                         has_lifetime_tag = True
-                        break
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance.id)
+                    if self.behavior == 'notify':
+                        self.generate_text_element_ec2(instance, instance_name, region)
                 else:
                     self.untagged_resources.append(instance.id)
-                self.generate_text_element_ec2(instance, instance_name, region)
+                    self.generate_text_element_ec2(instance, instance_name, region)
                 n += 1
 
         if n == 0:
