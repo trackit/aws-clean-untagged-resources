@@ -46,6 +46,7 @@ Resources:
         - arn:aws:iam::aws:policy/AWSLambdaExecute
         - arn:aws:iam::aws:policy/AmazonEC2FullAccess
         - arn:aws:iam::aws:policy/AmazonRDSFullAccess
+        - arn:aws:iam::aws:policy/AmazonECS_FullAccess
 
   AWSCleanUntaggedResourcesFunction:
     Type: AWS::Lambda::Function
