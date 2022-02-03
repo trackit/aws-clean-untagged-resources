@@ -1,8 +1,6 @@
-import datetime
 import boto3
 import slack
-from datetime import timedelta, datetime
-import pytz
+import utils
 
 
 class RDSService:
@@ -28,16 +26,19 @@ class RDSService:
         result = f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*\n'
         result += f':birthday: *Launch date* {str(instance["InstanceCreateTime"])}\n' \
                   f':wrench: *Engine* {instance["Engine"]}\n'
-        expired_date = 'No Tag Provided'
+        expired_str = ':warning: No Tag Provided, Expired Resource'
         if instance["TagList"]:
             for tag in instance["TagList"]:
                 result += f':label: `{tag["Key"]}` = `{tag["Value"]}`\n'
                 if tag["Key"] == self.lifetime_tag_key:
-                    expired_date = instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))
-                    if (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
-                            pytz.utc.localize(datetime.now()):
-                        expired_date = f'{str(expired_date)}\n:warning: Expired Resource'
-        result += f':skull_and_crossbones: *Expiration date* {str(expired_date)}\n'
+                    expired_date = utils.get_expired_date(tag["Value"], instance["InstanceCreateTime"])
+                    if not expired_date:
+                        expired_str = ':warning: Bad Tag Value Provided'
+                    elif utils.is_expired_date(expired_date):
+                        expired_str = f'{str(expired_date)}\n:warning: Expired Resource'
+                    else:
+                        expired_str = str(expired_date)
+        result += f':skull_and_crossbones: *Expiration date* {str(expired_str)}\n'
         url = f'https://{region}.console.aws.amazon.com/rds/home?region={region}#databases:'
         self.slack_service.append_blocks({
             'type': 'section',
@@ -106,11 +107,10 @@ class RDSService:
                     if tag["Key"] == self.tag_key and tag["Value"] == self.tag_value:
                         has_tag = True
                         break
-                    if tag["Key"] == self.lifetime_tag_key and \
-                            (instance["InstanceCreateTime"] + timedelta(int(tag["Value"]))) > \
-                            pytz.utc.localize(datetime.now()):
-                        has_lifetime_tag = True
-                        break
+                    if tag["Key"] == self.lifetime_tag_key:
+                        if not utils.check_tag_expired(tag["Value"], instance["InstanceCreateTime"]):
+                            has_lifetime_tag = True
+                            break
 
             if not has_tag:
                 if has_lifetime_tag:

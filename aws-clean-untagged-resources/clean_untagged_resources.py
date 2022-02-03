@@ -15,12 +15,16 @@ LIFETIME_TAG_KEY = os.environ["LIFETIME_TAG_KEY"]
 
 
 class AWSTerminator:
-    def __init__(self, webhook_url, regions, message, tag_key, tag_value, lifetime_tag_key, behavior_type):
+    def __init__(
+            self, webhook_url, regions, message, tag_key, tag_value, lifetime_tag_key, behavior_type
+    ):
         self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
         self.regions = regions
         self.behavior_type = behavior_type
-        self.slack_service = slack.Slack.get_instance(webhook_url, message, tag_key, tag_value, lifetime_tag_key)
+        self.slack_service = slack.Slack.get_instance(
+            webhook_url, message, tag_key, tag_value, lifetime_tag_key
+        )
         self.ec2_service = EC2Service(tag_key, tag_value, lifetime_tag_key, behavior_type, self.logger)
         self.rds_service = RDSService(tag_key, tag_value, lifetime_tag_key, behavior_type, self.logger)
         self.ecs_service = ECSService(tag_key, tag_value, lifetime_tag_key, behavior_type, self.logger)
@@ -68,5 +72,7 @@ class AWSTerminator:
 def lambda_handler(event, context):
     regions = REGIONS.split(',')
 
-    terminator = AWSTerminator(SLACK_WEBHOOK_URL, regions, MESSAGE, TAG_KEY, TAG_VALUE, LIFETIME_TAG_KEY, BEHAVIOR)
+    terminator = AWSTerminator(
+        SLACK_WEBHOOK_URL, regions, MESSAGE, TAG_KEY, TAG_VALUE, LIFETIME_TAG_KEY, BEHAVIOR
+    )
     terminator.process()
