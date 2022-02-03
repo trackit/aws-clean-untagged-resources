@@ -86,12 +86,12 @@ class ECSService:
             }
         })
 
-    def generate_text_element(self, task, task_name, region):
-        if self.behavior == 'notify':
+    def generate_text_element(self, task, task_name, region, notification_type):
+        if notification_type == 'notify':
             self.generate_text_notify(task, task_name, region)
-        elif self.behavior == 'stop':
+        elif notification_type == 'stop':
             self.generate_text_stop(task, task_name)
-        elif self.behavior == 'terminate':
+        elif notification_type == 'terminate':
             self.generate_text_terminate(task, task_name)
         else:
             return
@@ -138,15 +138,15 @@ class ECSService:
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                'text': f':rotating_light: Cluster *{str(cluster["taskArn"])} ({cluster["clusterName"]})* '
-                        f'has been terminated.'
+                'text': f':rotating_light: Cluster *{str(cluster["clusterArn"])} ({cluster["clusterName"]})* '
+                        f'has been deleted.'
             }
         })
 
-    def generate_cluster_text(self, cluster, region):
-        if self.behavior == 'notify':
+    def generate_cluster_text(self, cluster, region, notification_type):
+        if notification_type == 'notify':
             self.generate_cluster_text_notify(cluster, region)
-        elif self.behavior == 'terminate':
+        elif notification_type == 'terminate':
             self.generate_cluster_text_terminate(cluster)
         else:
             return
@@ -173,11 +173,10 @@ class ECSService:
                 if not has_tag:
                     if has_lifetime_tag:
                         self.lifetime_tagged_resources.append(task)
-                        if self.behavior == 'notify':
-                            self.generate_text_element(task, task_name, region)
+                        self.generate_text_element(task, task_name, region, 'notify')
                     else:
                         self.untagged_resources.append(task)
-                        self.generate_text_element(task, task_name, region)
+                        self.generate_text_element(task, task_name, region, self.behavior)
 
     def cluster_element(self, cluster, region):
         has_tag = False
@@ -194,9 +193,10 @@ class ECSService:
         if not has_tag:
             if has_lifetime_tag:
                 self.lifetime_tagged_clusters.append(cluster)
+                self.generate_cluster_text(cluster, region, 'notify')
             else:
                 self.untagged_clusters.append(cluster)
-            self.generate_cluster_text(cluster, region)
+                self.generate_cluster_text(cluster, region, self.behavior)
 
     def resources_loop(self, region):
         self.slack_service.section_header_text('ECS')
@@ -245,5 +245,9 @@ class ECSService:
             self.logger.info('Fargate Stop Not Implemented')
 
     def terminate_untagged_resources(self):
-        if len(self.untagged_resources) > 0:
+        if len(self.untagged_clusters) > 0:
+            for cluster in self.untagged_clusters:
+                self.boto3_client.delete_cluster(
+                    cluster=cluster["clusterArn"]
+                )
             self.logger.info('Fargate Terminate Not Implemented')

@@ -77,12 +77,12 @@ class EC2Service:
             }
         })
 
-    def generate_text_element_ec2(self, instance, instance_name, region):
-        if self.behavior == 'notify':
+    def generate_text_element_ec2(self, instance, instance_name, region, notification_type):
+        if notification_type == 'notify':
             self.generate_text_notify(instance, instance_name, region)
-        elif self.behavior == 'stop':
+        elif notification_type == 'stop':
             self.generate_text_stop(instance, instance_name)
-        elif self.behavior == 'terminate':
+        elif notification_type == 'terminate':
             self.generate_text_terminate(instance, instance_name)
         else:
             return
@@ -113,9 +113,10 @@ class EC2Service:
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance.id)
+                    self.generate_text_element_ec2(instance, instance_name, region, 'notify')
                 else:
                     self.untagged_resources.append(instance.id)
-                self.generate_text_element_ec2(instance, instance_name, region)
+                    self.generate_text_element_ec2(instance, instance_name, region, self.behavior)
                 n += 1
 
         if n == 0:

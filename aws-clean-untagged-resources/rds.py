@@ -77,12 +77,12 @@ class RDSService:
             }
         })
 
-    def generate_text_element_rds(self, instance, region):
-        if self.behavior == 'notify':
+    def generate_text_element_rds(self, instance, region, notification_type):
+        if notification_type == 'notify':
             self.generate_text_notify(instance, region)
-        elif self.behavior == 'stop':
+        elif notification_type == 'stop':
             self.generate_text_stop(instance)
-        elif self.behavior == 'terminate':
+        elif notification_type == 'terminate':
             self.generate_text_terminate(instance)
         else:
             return
@@ -115,9 +115,10 @@ class RDSService:
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance)
+                    self.generate_text_element_rds(instance, region, "notify")
                 else:
                     self.untagged_resources.append(instance)
-                self.generate_text_element_rds(instance, region)
+                    self.generate_text_element_rds(instance, region, self.behavior)
                 n += 1
 
         if n == 0:
