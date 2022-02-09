@@ -1,3 +1,4 @@
+import logging
 import urllib.request
 import json
 
@@ -46,7 +47,8 @@ class Slack:
                 'text': f':robot_face: *Tag your resources with `{self.tag_key}={self.tag_value}`'
                         f'if you want them to live!*\n'
                         f':robot_face: *You can also tag your resources with `{self.lifetime_tag_key}=x`'
-                        f'with x a number of days, which means that your resources will live at least x days.*',
+                        f'with x a number of days, which means that your resources will live at least x days or '
+                        f'`{self.lifetime_tag_key}=yyyy-mm-dd` to define a expiration date for the resource.*\n',
                 'type': 'mrkdwn'
             },
             'type': 'section'
@@ -80,5 +82,8 @@ class Slack:
         self.text["blocks"] = []
 
     def request(self):
-        req = urllib.request.Request(self.webhook_url, json.dumps(self.text).encode())
-        urllib.request.urlopen(req)
+        if self.webhook_url:
+            req = urllib.request.Request(self.webhook_url, json.dumps(self.text).encode())
+            urllib.request.urlopen(req)
+        else:
+            logging.info('Slack Webhook URL not found.')
