@@ -12,7 +12,8 @@ It has 3 possible behavior:
 
 The Lambda will also check for resources tagged with a lifetime tag to be able to define from when a resource should be
 terminated. For example if we have the tag `Lifetime`=`10`, it means that the resource should live at least 10 days and the
-lambda won't stop/terminate this resource until the lifetime has been expired.
+lambda won't stop/terminate this resource until the lifetime has been expired or `Lifetime`=`yyyy-mm-dd` to directly define
+an expiration date for the resource.
 
 ### Package
 

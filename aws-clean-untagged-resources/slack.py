@@ -48,7 +48,7 @@ class Slack:
                         f'if you want them to live!*\n'
                         f':robot_face: *You can also tag your resources with `{self.lifetime_tag_key}=x`'
                         f'with x a number of days, which means that your resources will live at least x days or '
-                        f'`{self.lifetime_tag_key}=yyyy-mm-dd` to define a expiration date for the resource.*\n',
+                        f'`{self.lifetime_tag_key}=yyyy-mm-dd` to define an expiration date for the resource.*\n',
                 'type': 'mrkdwn'
             },
             'type': 'section'
