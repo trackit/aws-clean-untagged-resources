@@ -4,7 +4,7 @@ This script will notify you on Slack and terminate/stop untagged EC2/RDS resourc
 
 ## 📚 Usage
 
-The project is using Lambda to periodically check your AWS account for untagged EC2 and RDS instances.
+The project is using Lambda to periodically check your AWS account for untagged or not persistent EC2, RDS & ECS with Fargate resources.
 It has 3 possible behavior:
 - *NOTIFY*: This mode will scan for untagged EC2/RDS instances and send a message on your Slack workspace
 - *STOP*: This mode will scan for untagged EC2/RDS instances and stop them
@@ -53,13 +53,13 @@ You will need to create a Slack webhook on your slack workspace
 To deploy the function, replace the variables in the following commands:
 ```sh
 $ aws cloudformation package --template-file template.yml --s3-bucket YOUR_DEPLOYMENT_BUCKET --s3-prefix YOUR_S3_PREFIX --output-template-file output.yaml
-$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * THU *)" DesiredTagKey=MY_RESOURCE_TAG_NAME DesiredTagValue=MY_RESOURCE_TAG_VALUE Behavior=notify|stop|terminate ScriptRegions=AWS_REGIONS
+$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * THU *)" PersistentTagKey=MY_RESOURCE_TAG_NAME PersistentTagValue=MY_RESOURCE_TAG_VALUE Behavior=notify|stop|terminate AwsRegions=AWS_REGIONS
 ```
 *Usage example*: If you want to notify on Slack about untagged resources on Thursday at 4pm and stop them on Sunday at 4pm you will need to deploy 2 stacks with the following:
 ```sh
 $ aws cloudformation package --template-file template.yml --s3-bucket YOUR_DEPLOYMENT_BUCKET --s3-prefix YOUR_S3_PREFIX --output-template-file output.yaml
-$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME-notify --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * THU *)" DesiredTagKey=MY_RESOURCE_TAG_NAME DesiredTagValue=MY_RESOURCE_TAG_VALUE Behavior=notify ScriptRegions=AWS_REGION1,AWS_REGION2 DesiredLifetimeTagKey=LIFETIME_TAG_NAME
-$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME-stop --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * SUN *)" DesiredTagKey=MY_RESOURCE_TAG_NAME DesiredTagValue=MY_RESOURCE_TAG_VALUE Behavior=stop ScriptRegions=AWS_REGION1,AWS_REGION2 DesiredLifetimeTagKey=LIFETIME_TAG_NAME
+$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME-notify --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * THU *)" PersistentTagKey=MY_RESOURCE_TAG_NAME PersistentTagValue=MY_RESOURCE_TAG_VALUE Behavior=notify AwsRegions=AWS_REGION1,AWS_REGION2 DesiredLifetimeTagKey=LIFETIME_TAG_NAME
+$ aws cloudformation deploy --template-file output.yaml --stack-name STACK_NAME-stop --capabilities CAPABILITY_NAMED_IAM --parameter-overrides SlackWebHook=YOUR_SLACK_WEBHOOK_URL ScheduleExpression="cron(0 16 ? * SUN *)" PersistentTagKey=MY_RESOURCE_TAG_NAME PersistentTagValue=MY_RESOURCE_TAG_VALUE Behavior=stop AwsRegions=AWS_REGION1,AWS_REGION2 DesiredLifetimeTagKey=LIFETIME_TAG_NAME
 ```
 
 ### 💣 Destroy
