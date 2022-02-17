@@ -84,5 +84,5 @@ Resources:
       Principal: events.amazonaws.com
       SourceArn:
         Fn::GetAtt:
-        - AWSCleanUntaggedResourcesFunction
+        - AWSCleanUntaggedResourcesRule
         - Arn
