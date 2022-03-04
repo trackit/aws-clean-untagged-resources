@@ -22,6 +22,28 @@ class Slack:
         self.lifetime_tag_key = lifetime_tag_key
         self.text = {"blocks": []}
 
+    def not_persistent_resources_request(self, region):
+        self.clean_blocks()
+        self.text["blocks"].append({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': f':globe_with_meridians: *{region}*'
+            }
+        })
+        self.text["blocks"].append({
+            'type': 'section',
+            'text': {
+                'type': 'mrkdwn',
+                'text': "Every resources are correctly tagged for this region, well done!"
+            }
+        })
+        if self.webhook_url:
+            req = urllib.request.Request(self.webhook_url, json.dumps(self.text).encode())
+            urllib.request.urlopen(req)
+        else:
+            logging.info('Slack Webhook URL not found.')
+
     def get_text(self):
         return self.text
 

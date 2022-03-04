@@ -17,7 +17,17 @@ class ECSService:
         self.behavior = behavior
         self.logger = logger
 
-    def set_boto3(self, region):
+    def not_persistent_resources(self):
+        if len(self.lifetime_tagged_resources) >= 1\
+                or len(self.untagged_resources) >= 1\
+                or len(self.untagged_clusters) >= 1:
+            return True
+        return False
+
+    def change_region(self, region):
+        self.untagged_resources = []
+        self.untagged_clusters = []
+        self.lifetime_tagged_resources = []
         self.boto3_client = boto3.client(service_name='ecs', region_name=region)
 
     def get_boto3_client(self):
