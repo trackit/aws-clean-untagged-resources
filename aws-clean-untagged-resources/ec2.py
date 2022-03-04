@@ -16,7 +16,14 @@ class EC2Service:
         self.behavior = behavior
         self.logger = logger
 
-    def set_boto3(self, region):
+    def not_persistent_resources(self):
+        if len(self.lifetime_tagged_resources) >= 1 or len(self.untagged_resources) >= 1:
+            return True
+        return False
+
+    def change_region(self, region):
+        self.untagged_resources = []
+        self.lifetime_tagged_resources = []
         self.boto3_client = boto3.client(service_name='ec2', region_name=region)
         self.boto3_resource = boto3.resource(service_name='ec2', region_name=region)
 

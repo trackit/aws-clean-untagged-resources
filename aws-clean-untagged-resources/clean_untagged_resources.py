@@ -36,9 +36,9 @@ class AWSTerminator:
             self.slack_service.intro_text(region)
 
             # Boto3 setup by region
-            self.ec2_service.set_boto3(region)
-            self.rds_service.set_boto3(region)
-            self.ecs_service.set_boto3(region)
+            self.ec2_service.change_region(region)
+            self.rds_service.change_region(region)
+            self.ecs_service.change_region(region)
 
             # Loop on services resources
             self.ec2_service.resources_loop(region)
@@ -47,14 +47,19 @@ class AWSTerminator:
 
             # Process behavior
             self.slack_service.outro_text()
-            self.behavior()
+            self.behavior(region)
             self.slack_service.clean_blocks()
             self.logger.info('Process Done for %s.\n', region)
 
-    def behavior(self):
+    def behavior(self, region):
         self.logger.info('Processing behavior %s...', self.behavior_type)
         if self.behavior_type == 'notify':
-            self.slack_service.request()
+            if self.ec2_service.not_persistent_resources() is True\
+                    or self.ecs_service.not_persistent_resources() is True\
+                    or self.rds_service.not_persistent_resources() is True:
+                self.slack_service.request()
+            else:
+                self.slack_service.not_persistent_resources_request(region)
         elif self.behavior_type == 'stop':
             self.ec2_service.stop_untagged_resources()
             self.rds_service.stop_untagged_resources()
