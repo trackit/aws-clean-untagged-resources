@@ -32,7 +32,7 @@ class RDSService:
     def generate_text_notify(self, instance, region):
         result = f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*\n'
         result += f':birthday: *Launch date* {str(instance["InstanceCreateTime"])}\n' \
-                  f':wrench: *Engine* {instance["Engine"]}\n'
+            f':wrench: *Engine* {instance["Engine"]}\n'
         expired_str = ':warning: No Tag Provided, Expired Resource'
         if instance["TagList"]:
             for tag in instance["TagList"]:
@@ -47,7 +47,7 @@ class RDSService:
                         expired_str = str(expired_date)
         result += f':skull_and_crossbones: *Expiration date* {str(expired_str)}\n'
         url = f'https://{region}.console.aws.amazon.com/rds/home?region={region}#databases:'
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
@@ -63,44 +63,42 @@ class RDSService:
                 'url': url,
                 'action_id': 'button-action'
             }
-        })
+        }
 
     def generate_text_stop(self, instance):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})* has been stopped.'
             }
-        })
+        }
 
     def generate_text_terminate(self, instance):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*'
                         f'has been terminated as long as its cluster.'
             }
-        })
+        }
 
     def generate_text_element_rds(self, instance, region, notification_type):
         if notification_type == 'notify':
-            self.generate_text_notify(instance, region)
+            return self.generate_text_notify(instance, region)
         elif notification_type == 'stop':
-            self.generate_text_stop(instance)
+            return self.generate_text_stop(instance)
         elif notification_type == 'terminate':
-            self.generate_text_terminate(instance)
+            return self.generate_text_terminate(instance)
         else:
             return
-        self.slack_service.append_blocks({
-            'type': 'divider'
-        })
 
     def resources_loop(self, region):
         n = 0
 
-        self.slack_service.section_header_text('RDS')
+        # self.slack_service.section_header_text('RDS')
+        rds_block = slack.section_header_text_fmt('RDS')
 
         instances = self.boto3_client.describe_db_instances()
         for instance in instances["DBInstances"]:
@@ -122,14 +120,19 @@ class RDSService:
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance)
-                    self.generate_text_element_rds(instance, region, "notify")
+                    rds_block.append(self.generate_text_element_rds(instance, region, "notify"))
                 else:
                     self.untagged_resources.append(instance)
-                    self.generate_text_element_rds(instance, region, self.behavior)
+                    rds_block.append(self.generate_text_element_rds(instance, region, self.behavior))
+                rds_block.append({
+                    'type': 'divider'
+                })
                 n += 1
 
-        if n == 0:
-            self.slack_service.no_resources_text()
+        # if n == 0:
+        #     self.slack_service.no_resources_text()
+        if n > 0:
+            self.slack_service.extend_blocks(rds_block)
         return self.untagged_resources
 
     def get_untagged_resources(self):

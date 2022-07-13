@@ -3,6 +3,18 @@ import urllib.request
 import json
 
 
+def section_header_text_fmt(name):
+    return [{
+        'type': 'header',
+        'text': {
+            'type': 'plain_text',
+            'text': name
+        }
+    }, {
+        'type': 'divider'
+    }]
+
+
 class Slack:
     _instance = None
 
@@ -99,6 +111,9 @@ class Slack:
 
     def append_blocks(self, obj):
         self.text["blocks"].append(obj)
+
+    def extend_blocks(self, objs):
+        self.text["blocks"].extend(objs)
 
     def clean_blocks(self):
         self.text["blocks"] = []
