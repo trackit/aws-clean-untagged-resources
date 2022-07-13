@@ -97,7 +97,6 @@ class RDSService:
     def resources_loop(self, region):
         n = 0
 
-        # self.slack_service.section_header_text('RDS')
         rds_block = slack.section_header_text_fmt('RDS')
 
         instances = self.boto3_client.describe_db_instances()
@@ -129,8 +128,6 @@ class RDSService:
                 })
                 n += 1
 
-        # if n == 0:
-        #     self.slack_service.no_resources_text()
         if n > 0:
             self.slack_service.extend_blocks(rds_block)
         return self.untagged_resources

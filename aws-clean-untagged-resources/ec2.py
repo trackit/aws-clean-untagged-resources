@@ -97,7 +97,6 @@ class EC2Service:
     def resources_loop(self, region):
         n = 0
 
-        # self.slack_service.section_header_text('EC2')
         ec2_block = slack.section_header_text_fmt('EC2')
 
         for instance in self.boto3_resource.instances.all():
@@ -127,8 +126,6 @@ class EC2Service:
                 })
                 n += 1
 
-        # if n == 0:
-        #     self.slack_service.no_resources_text()
         if n > 0:
             self.slack_service.extend_blocks(ec2_block)
         return self.untagged_resources

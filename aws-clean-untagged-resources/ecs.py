@@ -216,7 +216,6 @@ class ECSService:
         return cluster_block
 
     def resources_loop(self, region):
-        # self.slack_service.section_header_text('ECS')
         ecs_block = slack.section_header_text_fmt('ECS')
 
         clusters = self.boto3_client.list_clusters()
