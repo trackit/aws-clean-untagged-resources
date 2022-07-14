@@ -47,8 +47,8 @@ class EC2Service:
                         expired_str = str(expired_date)
         result += f':skull_and_crossbones: *Expiration date* {str(expired_str)}\n'
         url = f'https://{region}.console.aws.amazon.com/ec2/v2/home?region={region}#InstanceDetails:instanceId=' \
-              f'{str(instance.id)}'
-        self.slack_service.append_blocks({
+            f'{str(instance.id)}'
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
@@ -64,43 +64,40 @@ class EC2Service:
                 'url': url,
                 'action_id': 'button-action'
             }
-        })
+        }
 
     def generate_text_stop(self, instance, instance_name):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f':warning: *{str(instance.id)} ({instance_name})* has been stopped.'
             }
-        })
+        }
 
     def generate_text_terminate(self, instance, instance_name):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f':rotating_light: *{str(instance.id)} ({instance_name})* has been terminated.'
             }
-        })
+        }
 
     def generate_text_element_ec2(self, instance, instance_name, region, notification_type):
         if notification_type == 'notify':
-            self.generate_text_notify(instance, instance_name, region)
+            return self.generate_text_notify(instance, instance_name, region)
         elif notification_type == 'stop':
-            self.generate_text_stop(instance, instance_name)
+            return self.generate_text_stop(instance, instance_name)
         elif notification_type == 'terminate':
-            self.generate_text_terminate(instance, instance_name)
+            return self.generate_text_terminate(instance, instance_name)
         else:
             return
-        self.slack_service.append_blocks({
-            'type': 'divider'
-        })
 
     def resources_loop(self, region):
         n = 0
 
-        self.slack_service.section_header_text('EC2')
+        ec2_block = slack.section_header_text_fmt('EC2')
 
         for instance in self.boto3_resource.instances.all():
             instance_name = 'Unknown'
@@ -120,14 +117,17 @@ class EC2Service:
             if not has_tag:
                 if has_lifetime_tag:
                     self.lifetime_tagged_resources.append(instance.id)
-                    self.generate_text_element_ec2(instance, instance_name, region, 'notify')
+                    ec2_block.append(self.generate_text_element_ec2(instance, instance_name, region, 'notify'))
                 else:
                     self.untagged_resources.append(instance.id)
-                    self.generate_text_element_ec2(instance, instance_name, region, self.behavior)
+                    ec2_block.append(self.generate_text_element_ec2(instance, instance_name, region, self.behavior))
+                ec2_block.append({
+                    'type': 'divider'
+                })
                 n += 1
 
-        if n == 0:
-            self.slack_service.no_resources_text()
+        if n > 0:
+            self.slack_service.extend_blocks(ec2_block)
         return self.untagged_resources
 
     def get_untagged_resources(self):

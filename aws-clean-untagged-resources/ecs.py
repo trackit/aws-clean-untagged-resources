@@ -60,7 +60,7 @@ class ECSService:
         except Exception as e:
             self.logger.error('error while retrieving cluster name & task id: %s', e)
         url = f'https://{region}.console.aws.amazon.com/ecs/home?region={region}#/clusters/{cluster_name}/tasks/{task_id}'
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
@@ -76,38 +76,35 @@ class ECSService:
                 'url': url,
                 'action_id': 'button-action'
             }
-        })
+        }
 
     def generate_text_stop(self, task, task_name):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f':warning: *{str(task["taskArn"])} ({task_name})* has been stopped.'
             }
-        })
+        }
 
     def generate_text_terminate(self, task, task_name):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f':rotating_light: Fargate task *{str(task["taskArn"])} ({task_name})* has been terminated.'
             }
-        })
+        }
 
     def generate_text_element(self, task, task_name, region, notification_type):
         if notification_type == 'notify':
-            self.generate_text_notify(task, task_name, region)
+            return self.generate_text_notify(task, task_name, region)
         elif notification_type == 'stop':
-            self.generate_text_stop(task, task_name)
+            return self.generate_text_stop(task, task_name)
         elif notification_type == 'terminate':
-            self.generate_text_terminate(task, task_name)
+            return self.generate_text_terminate(task, task_name)
         else:
             return
-        self.slack_service.append_blocks({
-            'type': 'divider'
-        })
 
     def generate_cluster_text_notify(self, cluster, region):
         result = f':pushpin: *Cluster:*\n*{cluster["clusterArn"]} ({cluster["clusterName"]})*\n'
@@ -125,7 +122,7 @@ class ECSService:
                         expired_str = str(expired_date)
         result += f':skull_and_crossbones: *Expiration date* {str(expired_str)}\n'
         url = f'https://{region}.console.aws.amazon.com/ecs/home?region={region}#/clusters/{cluster["clusterName"]}'
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
@@ -141,30 +138,29 @@ class ECSService:
                 'url': url,
                 'action_id': 'button-action'
             }
-        })
+        }
 
     def generate_cluster_text_terminate(self, cluster):
-        self.slack_service.append_blocks({
+        return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
                 'text': f':rotating_light: Cluster *{str(cluster["clusterArn"])} ({cluster["clusterName"]})* '
                         f'has been deleted.'
             }
-        })
+        }
 
     def generate_cluster_text(self, cluster, region, notification_type):
         if notification_type == 'notify':
-            self.generate_cluster_text_notify(cluster, region)
+            return self.generate_cluster_text_notify(cluster, region)
         elif notification_type == 'terminate':
-            self.generate_cluster_text_terminate(cluster)
+            return self.generate_cluster_text_terminate(cluster)
         else:
             return
-        self.slack_service.append_blocks({
-            'type': 'divider'
-        })
 
     def tasks_loop(self, tasks, region):
+        tasks_block = []
+
         for task in tasks["tasks"]:
             has_tag = False
             has_lifetime_tag = False
@@ -183,12 +179,19 @@ class ECSService:
                 if not has_tag:
                     if has_lifetime_tag:
                         self.lifetime_tagged_resources.append(task)
-                        self.generate_text_element(task, task_name, region, 'notify')
+                        tasks_block.append(self.generate_text_element(task, task_name, region, 'notify'))
                     else:
                         self.untagged_resources.append(task)
-                        self.generate_text_element(task, task_name, region, self.behavior)
+                        tasks_block.append(self.generate_text_element(task, task_name, region, self.behavior))
+                    tasks_block.append({
+                        'type': 'divider'
+                    })
+
+        return tasks_block
 
     def cluster_element(self, cluster, region):
+        cluster_block = []
+
         has_tag = False
         has_lifetime_tag = False
         if cluster["tags"]:
@@ -203,13 +206,17 @@ class ECSService:
         if not has_tag:
             if has_lifetime_tag:
                 self.lifetime_tagged_clusters.append(cluster)
-                self.generate_cluster_text(cluster, region, 'notify')
+                cluster_block.append(self.generate_cluster_text(cluster, region, 'notify'))
             else:
                 self.untagged_clusters.append(cluster)
-                self.generate_cluster_text(cluster, region, self.behavior)
+                cluster_block.append(self.generate_cluster_text(cluster, region, self.behavior))
+            cluster_block.append({
+                'type': 'divider'
+            })
+        return cluster_block
 
     def resources_loop(self, region):
-        self.slack_service.section_header_text('ECS')
+        ecs_block = slack.section_header_text_fmt('ECS')
 
         clusters = self.boto3_client.list_clusters()
         clusters = self.boto3_client.describe_clusters(
@@ -218,7 +225,7 @@ class ECSService:
         )
         for cluster in clusters["clusters"]:
             if self.behavior != 'stop':
-                self.cluster_element(cluster, region)
+                ecs_block.extend(self.cluster_element(cluster, region))
             if self.behavior != 'terminate':
                 task_list = self.boto3_client.list_tasks(
                     cluster=cluster["clusterArn"],
@@ -231,11 +238,14 @@ class ECSService:
                         tasks=task_list["taskArns"],
                         include=["TAGS"]
                     )
-                    self.tasks_loop(tasks, region)
+                    ecs_block.extend(self.tasks_loop(tasks, region))
 
         if len(self.untagged_resources) <= 0 and len(self.lifetime_tagged_resources) <= 0 \
                 and len(self.untagged_clusters) <= 0:
             self.slack_service.no_resources_text()
+        if len(self.untagged_resources) >= 0 or len(self.lifetime_tagged_resources) >= 0 \
+                or len(self.untagged_clusters) >= 0:
+            self.slack_service.extend_blocks(ecs_block)
         return self.untagged_resources
 
     def get_untagged_resources(self):
