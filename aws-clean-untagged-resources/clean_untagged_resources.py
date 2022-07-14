@@ -58,8 +58,9 @@ class AWSTerminator:
                     or self.ecs_service.not_persistent_resources() is True\
                     or self.rds_service.not_persistent_resources() is True:
                 self.slack_service.request()
-            else:
-                self.slack_service.not_persistent_resources_request(region)
+            # TODO: add the following lines if you want to be notified even if every resources of every services are clean for a region
+            # else:
+            #     self.slack_service.not_persistent_resources_request(region)
         elif self.behavior_type == 'stop':
             self.ec2_service.stop_untagged_resources()
             self.rds_service.stop_untagged_resources()
