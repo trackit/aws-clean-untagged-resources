@@ -138,7 +138,10 @@ class EC2Service:
 
     def stop_untagged_resources(self):
         if len(self.untagged_resources) > 0:
-            self.boto3_client.stop_instances(InstanceIds=self.untagged_resources)
+            try:
+                self.boto3_client.stop_instances(InstanceIds=self.untagged_resources)
+            except Exception as e:
+                self.logger.error('error while stopping ec2 instance: %s', e)
 
     def terminate_untagged_resources(self):
         if len(self.untagged_resources) > 0:

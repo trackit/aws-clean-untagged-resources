@@ -53,26 +53,29 @@ class AWSTerminator:
 
     def behavior(self, region):
         self.logger.info('Processing behavior %s...', self.behavior_type)
-        if self.behavior_type == 'notify':
-            if self.ec2_service.not_persistent_resources() is True\
-                    or self.ecs_service.not_persistent_resources() is True\
-                    or self.rds_service.not_persistent_resources() is True:
+        if self.ec2_service.not_persistent_resources() is True \
+                or self.ecs_service.not_persistent_resources() is True \
+                or self.rds_service.not_persistent_resources() is True:
+            if self.behavior_type == 'notify':
+                if self.ec2_service.not_persistent_resources() is True\
+                        or self.ecs_service.not_persistent_resources() is True\
+                        or self.rds_service.not_persistent_resources() is True:
+                    self.slack_service.request()
+                # TODO: add the following lines if you want to be notified even if every resources of every services are clean for a region
+                # else:
+                #     self.slack_service.not_persistent_resources_request(region)
+            elif self.behavior_type == 'stop':
+                self.ec2_service.stop_untagged_resources()
+                self.rds_service.stop_untagged_resources()
+                self.ecs_service.stop_untagged_resources()
                 self.slack_service.request()
-            # TODO: add the following lines if you want to be notified even if every resources of every services are clean for a region
-            # else:
-            #     self.slack_service.not_persistent_resources_request(region)
-        elif self.behavior_type == 'stop':
-            self.ec2_service.stop_untagged_resources()
-            self.rds_service.stop_untagged_resources()
-            self.ecs_service.stop_untagged_resources()
-            self.slack_service.request()
-        elif self.behavior_type == 'terminate':
-            self.ec2_service.terminate_untagged_resources()
-            self.rds_service.terminate_untagged_resources()
-            self.ecs_service.terminate_untagged_resources()
-            self.slack_service.request()
-        else:
-            self.logger.info('%s behavior does not exist.', self.behavior_type)
+            elif self.behavior_type == 'terminate':
+                self.ec2_service.terminate_untagged_resources()
+                self.rds_service.terminate_untagged_resources()
+                self.ecs_service.terminate_untagged_resources()
+                self.slack_service.request()
+            else:
+                self.logger.info('%s behavior does not exist.', self.behavior_type)
 
 
 def lambda_handler(event, context):

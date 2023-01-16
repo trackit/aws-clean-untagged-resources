@@ -257,11 +257,14 @@ class ECSService:
     def stop_untagged_resources(self):
         if len(self.untagged_resources) > 0:
             for task in self.untagged_resources:
-                self.boto3_client.stop_task(
-                    cluster=task["clusterArn"],
-                    task=task["taskArn"],
-                    reason='Not persistent task'
-                )
+                try:
+                    self.boto3_client.stop_task(
+                        cluster=task["clusterArn"],
+                        task=task["taskArn"],
+                        reason='Not persistent task'
+                    )
+                except Exception as e:
+                    self.logger.error('error while stopping ecs instance: %s', e)
             self.logger.info('Fargate Stop Not Implemented')
 
     def terminate_untagged_resources(self):

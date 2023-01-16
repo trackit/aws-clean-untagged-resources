@@ -66,11 +66,16 @@ class RDSService:
         }
 
     def generate_text_stop(self, instance):
+        text = f':warning: *{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})* '
+        if 'aurora' in instance['Engine']:
+            text += 'can\'t be stopped since it\'s using an Aurora Engine.'
+        else:
+            text += 'has been stopped.'
         return {
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})* has been stopped.'
+                'text': text
             }
         }
 
@@ -79,7 +84,7 @@ class RDSService:
             'type': 'section',
             'text': {
                 'type': 'mrkdwn',
-                'text': f'*{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*'
+                'text': f':rotating_light: *{instance["DBInstanceIdentifier"]} ({instance["DbiResourceId"]})*'
                         f'has been terminated as long as its cluster.'
             }
         }
@@ -140,10 +145,14 @@ class RDSService:
 
     def stop_untagged_resources(self):
         for instance in self.untagged_resources:
-            self.boto3_client.stop_db_instance(
-                DBInstanceIdentifier=instance["DBInstanceIdentifier"],
-                DBSnapshotIdentifier=instance["DBInstanceIdentifier"]
-            )
+            try:
+                if 'aurora' not in instance['Engine']:
+                    self.boto3_client.stop_db_instance(
+                        DBInstanceIdentifier=instance["DBInstanceIdentifier"],
+                        DBSnapshotIdentifier=instance["DBInstanceIdentifier"]
+                    )
+            except Exception as e:
+                self.logger.error('error while stopping db instance: %s', e)
 
     def terminate_untagged_resources(self):
         for instance in self.untagged_resources:
