@@ -151,6 +151,9 @@ class RDSService:
                         DBInstanceIdentifier=instance["DBInstanceIdentifier"],
                         DBSnapshotIdentifier=instance["DBInstanceIdentifier"]
                     )
+                self.boto3_client.stop_db_cluster(
+                    DBClusterIdentifier=instance["DBClusterIdentifier"],
+                )
             except Exception as e:
                 self.logger.error('error while stopping db instance: %s', e)
 
